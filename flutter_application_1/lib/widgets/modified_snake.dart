@@ -7,9 +7,13 @@ import 'package:sensors_plus/sensors_plus.dart';
 
 import 'package:flutter_application_1/objects/simulation.dart';
 
-
 class Snake extends StatefulWidget {
-  Snake({super.key, this.rows = 1000, this.columns = 1000, this.cellSize = 1.0}){
+  Snake({
+    super.key,
+    this.rows = 1000,
+    this.columns = 1000,
+    this.cellSize = 1.0,
+  }) {
     state = GameState(rows, columns);
   }
 
@@ -24,15 +28,16 @@ class Snake extends StatefulWidget {
 
   @override
   // ignore: no_logic_in_create_state
-  State<StatefulWidget> createState() => SnakeState(rows, columns, state, cellSize);
+  State<StatefulWidget> createState() =>
+      SnakeState(rows, columns, state, cellSize);
   // snakestate = SnakeState(rows, columns, cellSize);
-  
+
   // @override
   // void altertap(Tap tap) {
   //   state(() {
 
   //   });
-  }
+}
 
 class SnakeBoardPainter extends CustomPainter {
   SnakeBoardPainter(this.state, this.cellSize);
@@ -47,12 +52,7 @@ class SnakeBoardPainter extends CustomPainter {
     //   ..color = Colors.black
     //   ..style = PaintingStyle.fill;
     canvas.drawRect(
-      Rect.fromLTWH(
-        0,
-        0,
-        state!.columns * cellSize,
-        state!.rows * cellSize,
-      ),
+      Rect.fromLTWH(0, 0, state!.columns * cellSize, state!.rows * cellSize),
       blackLine,
     );
     for (int x = 0; x < state!.columns; x++) {
@@ -68,13 +68,12 @@ class SnakeBoardPainter extends CustomPainter {
         int airColor = (255 * (1.0 - density)).toInt();
 
         final colorfilled = Paint();
-          if (state!.fluid.isCellSolid(x, y)) {
-            colorfilled.color = const Color.fromARGB(255, 128, 64, 0);
-          }
-          else {
-            colorfilled.color = Color.fromARGB(255, airColor, airColor, 255);
-          }
-          colorfilled.style = PaintingStyle.fill;
+        if (state!.fluid.isCellSolid(x, y)) {
+          colorfilled.color = const Color.fromARGB(255, 128, 64, 0);
+        } else {
+          colorfilled.color = Color.fromARGB(255, airColor, airColor, 255);
+        }
+        colorfilled.style = PaintingStyle.fill;
 
         canvas.drawRect(Rect.fromPoints(a, b), colorfilled);
       }
@@ -106,8 +105,9 @@ class SnakeState extends State<Snake> {
   @override
   void initState() {
     super.initState();
-    _streamSubscription =
-        accelerometerEvents.listen((AccelerometerEvent event) {
+    _streamSubscription = accelerometerEvents.listen((
+      AccelerometerEvent event,
+    ) {
       setState(() {
         acceleration = event;
       });
@@ -124,31 +124,35 @@ class SnakeState extends State<Snake> {
     final newDirection = acceleration == null
         ? null
         : acceleration!.x.abs() < 1.0 && acceleration!.y.abs() < 1.0
-            ? null
-            : (acceleration!.x.abs() < acceleration!.y.abs())
-                ? math.Point<double>(0, acceleration!.y.sign.toDouble())
-                : math.Point<double>(-acceleration!.x.sign.toDouble(), 0);
+        ? null
+        : (acceleration!.x.abs() < acceleration!.y.abs())
+        ? math.Point<double>(0, acceleration!.y.sign.toDouble())
+        : math.Point<double>(-acceleration!.x.sign.toDouble(), 0);
     state!.step(newDirection);
+  }
+
+  // places the selected block (water, dirt or air) at the finger's position.
+  //  by tapping and dragging so both behave exactly the same.
+  void _placeAt(Offset position) {
+    final gridX = position.dx / cellSize;
+    final gridY = position.dy / cellSize;
+
+    final fluidX = (gridX + 0.5) * state!.fluid.h;
+    final fluidY = (gridY + 0.5) * state!.fluid.h;
+
+    state!.alterterrain(fluidX, fluidY);
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     return Listener(
-      onPointerDown: (PointerDownEvent event) {
-        final gridX = event.localPosition.dx / cellSize;
-        final gridY = event.localPosition.dy / cellSize;
-
-        final fluidX = (gridX + 0.5) * state!.fluid.h;
-        final fluidY = (gridY + 0.5) * state!.fluid.h;
-
-        state!.alterterrain(fluidX, fluidY);
-        setState(() {});
-      },
+      // tap places one block
+      onPointerDown: (PointerDownEvent event) => _placeAt(event.localPosition),
+      // dragging keeps placing blocks along the finger's path
+      onPointerMove: (PointerMoveEvent event) => _placeAt(event.localPosition),
       child: CustomPaint(
-        size: Size(
-          widget.columns * cellSize,
-          widget.rows * cellSize,
-        ),
+        size: Size(widget.columns * cellSize, widget.rows * cellSize),
         painter: SnakeBoardPainter(state, cellSize),
       ),
     );
